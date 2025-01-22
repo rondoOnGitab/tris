@@ -36,7 +36,7 @@ public class Client
         socket = new DatagramSocket();
         serverAddress = InetAddress.getByName(SERVER_ADDRESS);
 
-        sendMessage("Entrato");
+        sendMessage("JOIN");
 
         mySymbol = receiveMessage();
         opponentSymbol = mySymbol.equals("X") ? "O" : "X";
