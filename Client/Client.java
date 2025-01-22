@@ -1,43 +1,44 @@
 package Client;
 
-import java.awt.*;
 import java.io.*;
 import java.net.*;
 import javax.swing.*;
+import java.awt.*;
 
-public class Client {
+public class Client 
+{
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
-    private BufferedWriter out;
-    private BufferedReader in;
+    private DatagramSocket socket;
+    private InetAddress serverAddress;
     private boolean isMyTurn = false;
     private String mySymbol;
     private String opponentSymbol;
     private JButton[][] buttons = new JButton[3][3];
     private JFrame frame;
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
+    public static void main(String[] args) 
+    {
+        SwingUtilities.invokeLater(() -> 
+        {
+            try 
+            {
                 new Client().start();
-            } catch (IOException e) {
+            } catch (IOException e) 
+            {
                 e.printStackTrace();
             }
         });
     }
 
-    public void start() throws IOException {
-        DatagramSocket socket = new DatagramSocket(SERVER_PORT, InetAddress.getByName(SERVER_ADDRESS));
-        //contiene messaggio
-        String messaggio = "Hello, server!";
-        byte[] buffer = messaggio.getBytes();
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-        socket.send(packet);
+    public void start() throws IOException 
+    {
+        socket = new DatagramSocket();
+        serverAddress = InetAddress.getByName(SERVER_ADDRESS);
 
-        //out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        //in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        sendMessage("Entrato");
 
-        mySymbol = in.readLine();
+        mySymbol = receiveMessage();
         opponentSymbol = mySymbol.equals("X") ? "O" : "X";
         isMyTurn = mySymbol.equals("X");
 
@@ -46,14 +47,17 @@ public class Client {
         new Thread(this::listenForMessages).start();
     }
 
-    private void createGUI() {
-        frame = new JFrame("Tic Tac Toe - Player: " + mySymbol);
+    private void createGUI() 
+    {
+        frame = new JFrame("Giocatore: " + mySymbol);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(450, 450);
         frame.setLayout(new GridLayout(3, 3));
 
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 3; i++) 
+        {
+            for (int j = 0; j < 3; j++) 
+            {
                 JButton button = new JButton();
                 button.setFont(new Font("Arial", Font.BOLD, 50));
                 button.setFocusPainted(false);
@@ -73,26 +77,33 @@ public class Client {
         frame.setVisible(true);
     }
 
-    private void handleButtonClick(int row, int col) {
-        if (isMyTurn && buttons[row][col].getText().isEmpty()) {
-            try {
-                out.write(row + "," + col);
-                out.newLine();
-                out.flush();
+    private void handleButtonClick(int row, int col) 
+    {
+        if (isMyTurn && buttons[row][col].getText().isEmpty()) 
+        {
+            try 
+            {
+                String message = "MOVE," + row + "," + col;
+                sendMessage(message);
                 isMyTurn = false;
-            } catch (IOException e) {
+            } catch (Exception e) 
+            {
                 e.printStackTrace();
             }
         }
     }
 
-    private void listenForMessages() {
-        try {
-            String message;
-            while ((message = in.readLine()) != null) {
+    private void listenForMessages() 
+    {
+        try 
+        {
+            while (true) 
+            {
+                String message = receiveMessage();
                 String[] parts = message.split(",");
 
-                switch (parts[0]) {
+                switch (parts[0]) 
+                {
                     case "MOVE":
                         int row = Integer.parseInt(parts[1]);
                         int col = Integer.parseInt(parts[2]);
@@ -105,12 +116,12 @@ public class Client {
 
                     case "WIN":
                         String winner = parts[1];
-                        JOptionPane.showMessageDialog(frame, "Player " + winner + " wins!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(frame, "Giocatore " + winner + " vittoria!", "Fine partita", JOptionPane.INFORMATION_MESSAGE);
                         resetBoard();
                         break;
 
                     case "DRAW":
-                        JOptionPane.showMessageDialog(frame, "It's a draw!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(frame, "Pareggio!", "Fine partita", JOptionPane.INFORMATION_MESSAGE);
                         resetBoard();
                         break;
 
@@ -119,15 +130,20 @@ public class Client {
                         break;
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) 
+        {
             e.printStackTrace();
         }
     }
 
-    private void resetBoard() {
-        SwingUtilities.invokeLater(() -> {
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
+    private void resetBoard() 
+    {
+        SwingUtilities.invokeLater(() -> 
+        {
+            for (int i = 0; i < 3; i++) 
+            {
+                for (int j = 0; j < 3; j++) 
+                {
                     buttons[i][j].setText("");
                     buttons[i][j].setEnabled(true);
                     buttons[i][j].setBackground(new Color(240, 240, 240));
@@ -135,5 +151,20 @@ public class Client {
             }
             isMyTurn = mySymbol.equals("X");
         });
+    }
+
+    private void sendMessage(String message) throws IOException 
+    {
+        byte[] buffer = message.getBytes();
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
+        socket.send(packet);
+    }
+
+    private String receiveMessage() throws IOException 
+    {
+        byte[] buffer = new byte[1024];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        socket.receive(packet);
+        return new String(packet.getData(), 0, packet.getLength());
     }
 }
