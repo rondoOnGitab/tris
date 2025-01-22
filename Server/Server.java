@@ -7,104 +7,118 @@ import java.util.*;
 
 public class Server {
     private static final int PORT = 12345;
-    private static List<ClientHandler> clients = new ArrayList<>();
     private static Tris board = new Tris();
     private static boolean currentPlayer = true; // true: X, false: O
+    private static HashMap<Boolean, InetSocketAddress> players = new HashMap<>();
+    private static DatagramSocket socket;
 
-    public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+    public static void main(String[] args) 
+    {
+        try {
+            socket = new DatagramSocket(PORT);
             System.out.println("Server avviato. In attesa di giocatori...");
 
-            while (clients.size() < 2) {
-                Socket clientSocket = serverSocket.accept();
-                ClientHandler client = new ClientHandler(clientSocket, clients.size() == 0);
-                clients.add(client);
-                new Thread(client).start();
-                System.out.println("Giocatore connesso: " + (clients.size() == 1 ? "X" : "O"));
+            while (players.size() < 2) 
+            {
+                DatagramPacket packet = receivePacket();
+                String message = new String(packet.getData(), 0, packet.getLength());
+
+                if (message.equals("JOIN")) 
+                {
+                    boolean isX = players.isEmpty();
+                    players.put(isX, (InetSocketAddress) packet.getSocketAddress());
+                    sendMessage(isX ? "X" : "O", (InetSocketAddress)packet.getSocketAddress());
+                    System.out.println("Giocatore connesso: " + (isX ? "X" : "O"));
+                }
             }
-        } catch (IOException e) {
+
+            while (true) 
+            {
+                DatagramPacket packet = receivePacket();
+                String message = new String(packet.getData(), 0, packet.getLength());
+                handleClientMessage(message, (InetSocketAddress) packet.getSocketAddress());
+            }
+
+        } catch (IOException e) 
+        {
             System.err.println("Errore nel server: " + e.getMessage());
         }
     }
 
-    synchronized static boolean makeMove(int row, int col, boolean player) {
+    private static DatagramPacket receivePacket() throws IOException 
+    {
+        byte[] buffer = new byte[1024];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        socket.receive(packet);
+        return packet;
+    }
+
+    private static void sendMessage(String message, InetSocketAddress address) throws IOException 
+    {
+        byte[] buffer = message.getBytes();
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address);
+        socket.send(packet);
+    }
+
+    private static void broadcast(String message) 
+    {
+        players.values().forEach(address -> {
+            try {
+                sendMessage(message, address);
+            } catch (IOException e) {
+                System.err.println("Errore nell'invio del messaggio: " + e.getMessage());
+            }
+        });
+    }
+
+    private static synchronized boolean makeMove(int row, int col, boolean player) 
+    {
         if (player == currentPlayer && board.occupaCasella(row, col, player)) {
             currentPlayer = !currentPlayer;
             return true;
         }
+
         return false;
     }
 
-    synchronized static void broadcast(String message) {
-        for (ClientHandler client : clients) {
-            client.sendMessage(message);
-        }
-    }
-
-    synchronized static void resetGame() {
+    private static synchronized void resetGame() 
+    {
         board = new Tris();
         currentPlayer = true;
         broadcast("RESET");
     }
 
-    static class ClientHandler implements Runnable {
-        private Socket socket;
-        private BufferedWriter out;
-        private BufferedReader in;
-        private boolean isX;
+    private static void handleClientMessage(String message, InetSocketAddress clientAddress) 
+    {
+        String[] parts = message.split(",");
 
-        public ClientHandler(Socket socket, boolean isX) {
-            this.socket = socket;
-            this.isX = isX;
-            try {
-                this.out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                sendMessage(isX ? "X" : "O");
-            } catch (IOException e) {
-                System.err.println("Errore nella configurazione del client: " + e.getMessage());
-            }
-        }
+        switch (parts[0]) 
+        {
+            case "MOVE":
+                int row = Integer.parseInt(parts[1]);
+                int col = Integer.parseInt(parts[2]);
+                boolean isX = players.get(true).equals(clientAddress);
 
-        @Override
-        public void run() {
-            try {
-                String input;
-                while ((input = in.readLine()) != null) {
-                    String[] parts = input.split(",");
-                    int row = Integer.parseInt(parts[0]);
-                    int col = Integer.parseInt(parts[1]);
+                if (makeMove(row, col, isX)) 
+                {
+                    broadcast("MOVE," + row + "," + col + "," + (isX ? "X" : "O"));
 
-                    if (makeMove(row, col, isX)) {
-                        broadcast("MOVE," + row + "," + col + "," + (isX ? "X" : "O"));
-
-                        if (board.checkWin(isX)) {
-                            broadcast("WIN," + (isX ? "X" : "O"));
-                            resetGame();
-                        } else if (board.isFull()) {
-                            broadcast("DRAW");
-                            resetGame();
-                        }
+                    if (board.checkWin(isX)) 
+                    {
+                        broadcast("WIN," + (isX ? "X" : "O"));
+                        resetGame();
+                    } 
+                    
+                    else if (board.isFull()) 
+                    {
+                        broadcast("DRAW");
+                        resetGame();
                     }
                 }
-            } catch (IOException e) {
-                System.err.println("Errore nel gestire il client: " + e.getMessage());
-            } finally {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+                break;
 
-        void sendMessage(String message) {
-            try {
-                out.write(message);
-                out.newLine();
-                out.flush();
-            } catch (IOException e) {
-                System.err.println("Errore nell'invio del messaggio: " + e.getMessage());
-            }
+            default:
+                System.err.println("Messaggio non riconosciuto: " + message);
         }
     }
 }
