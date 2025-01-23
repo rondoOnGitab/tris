@@ -62,13 +62,13 @@ public class Server {
 
     private static void broadcast(String message) 
     {
-        players.values().forEach(address -> {
+        for (InetSocketAddress address : players.values()) {
             try {
                 sendMessage(message, address);
             } catch (IOException e) {
                 System.err.println("Errore nell'invio del messaggio: " + e.getMessage());
             }
-        });
+        }
     }
 
     private static synchronized boolean makeMove(int row, int col, boolean player) 
