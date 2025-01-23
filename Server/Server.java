@@ -90,7 +90,7 @@ public class Server {
 
     private static void handleClientMessage(String message, InetSocketAddress clientAddress) 
     {
-        String[] parts = message.split(",");
+        String[] parts = message.split(";");
 
         switch (parts[0]) 
         {
@@ -101,11 +101,11 @@ public class Server {
 
                 if (makeMove(row, col, isX)) 
                 {
-                    broadcast("MOVE," + row + "," + col + "," + (isX ? "X" : "O"));
+                    broadcast("MOVE;" + row + ";" + col + ";" + (isX ? "X" : "O"));
 
                     if (board.checkWin(isX)) 
                     {
-                        broadcast("WIN," + (isX ? "X" : "O"));
+                        broadcast("WIN;" + (isX ? "X" : "O"));
                         resetGame();
                     } 
                     

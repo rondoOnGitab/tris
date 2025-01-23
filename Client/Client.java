@@ -3,14 +3,11 @@ package Client;
 import java.io.*;
 import java.net.*;
 import javax.swing.*;
-
 import java.awt.*;
 
-public class Client 
-{
+public class Client {
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
-
     private DatagramSocket socket;
     private InetAddress serverAddress;
     private boolean isMyTurn = false;
@@ -21,14 +18,11 @@ public class Client
 
     public static void main(String[] args) 
     {
-        //riguarda la sicurezza del frame
-        SwingUtilities.invokeLater(() -> 
-        {
-            try 
-            {
+        //Riguarda la sicurezza del frame
+        SwingUtilities.invokeLater(() -> {
+            try {
                 new Client().start();
-            } catch (IOException e) 
-            {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         });
@@ -37,17 +31,17 @@ public class Client
     public void start() throws IOException 
     {
         socket = new DatagramSocket();
-        serverAddress = InetAddress.getByName(SERVER_ADDRESS); //ottengo indirzzo server
+        serverAddress = InetAddress.getByName(SERVER_ADDRESS); //ottengo indirizzo server
 
         sendMessage("JOIN"); //messaggio inviato al server
 
-        mySymbol = receiveMessage(); //messagio ricevuto dal server
+        mySymbol = receiveMessage(); //messaggio ricevuto dal server
         opponentSymbol = mySymbol.equals("X") ? "O" : "X";
-        isMyTurn = mySymbol.equals("X"); //se ha X prende turno iniziale
+        isMyTurn = mySymbol.equals("X"); //se ha X prende il turno
 
         createGUI();
 
-        new Thread(this::listenForMessages).start(); //per ascoltare in modo non bloccate
+        new Thread(this::listenForMessages).start(); // creo un thread che ascolta in maniera non bloccante
     }
 
     private void createGUI() 
@@ -57,10 +51,8 @@ public class Client
         frame.setSize(450, 450);
         frame.setLayout(new GridLayout(3, 3));
 
-        for (int i = 0; i < 3; i++) 
-        {
-            for (int j = 0; j < 3; j++) 
-            {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
                 JButton button = new JButton();
                 button.setFont(new Font("Arial", Font.BOLD, 50));
                 button.setFocusPainted(false);
@@ -68,12 +60,11 @@ public class Client
                 button.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(Color.GRAY, 1),
                     BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-                
                 buttons[i][j] = button;
                 int row = i;
                 int col = j;
 
-                button.addActionListener(e -> handleButtonClick(row, col)); //assegno azione al bottone
+                button.addActionListener(e -> handleButtonClick(row, col)); //assegno un azione ad un bottone
                 frame.add(button);
             }
         }
@@ -85,13 +76,11 @@ public class Client
     {
         if (isMyTurn && buttons[row][col].getText().isEmpty()) 
         {
-            try 
-            {
-                String message = "MOVE," + row + ";" + col;
+            try {
+                String message = "MOVE;" + row + ";" + col;
                 sendMessage(message);
                 isMyTurn = false;
-            } catch (Exception e) 
-            {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -99,8 +88,7 @@ public class Client
 
     private void listenForMessages() 
     {
-        try 
-        {
+        try {
             while (true) 
             {
                 String message = receiveMessage();
@@ -109,48 +97,42 @@ public class Client
                 switch (parts[0]) 
                 {
                     case "MOVE":
-                        //aggiorno la visuale del client
-                        int row = Integer.parseInt(parts[1]); //ricevo una stringa quindi parso
+                        int row = Integer.parseInt(parts[1]);//ricevo una stringa quindi parso
                         int col = Integer.parseInt(parts[2]);
                         String symbol = parts[3];
                         buttons[row][col].setText(symbol);
                         buttons[row][col].setEnabled(false);
                         buttons[row][col].setBackground(symbol.equals("X") ? new Color(200, 220, 240) : new Color(240, 200, 220));
-                        isMyTurn = symbol.equals(opponentSymbol); // Cambia il turno
+                        isMyTurn = symbol.equals(opponentSymbol);
                         break;
-                    case "WIN": 
+
+                    case "WIN":
                         //messaggio di vittoria
-                        String winner = parts[1]; 
-                        JOptionPane.showMessageDialog(frame, "Giocatore " + winner + " vittoria!", "Fine partita", JOptionPane.INFORMATION_MESSAGE);
+                        String winner = parts[1];
+                        JOptionPane.showMessageDialog(frame, "Ha vinto " + winner+"!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
                         resetBoard();
                         break;
-                    case "DRAW": 
+
+                    case "DRAW":
                         //messaggio di pareggio
-                        JOptionPane.showMessageDialog(frame, "Pareggio!", "Fine partita", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(frame, "È un pareggio!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
                         resetBoard();
                         break;
-                    case "RESET": 
-                        //resetta
+
+                    case "RESET":
                         resetBoard();
-                        break;
-                    default:
                         break;
                 }
             }
-        } catch (Exception e) 
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void resetBoard() 
-    {
-        SwingUtilities.invokeLater(() -> 
-        {
-            for (int i = 0; i < 3; i++) 
-            {
-                for (int j = 0; j < 3; j++) 
-                {
+    private void resetBoard() {
+        SwingUtilities.invokeLater(() -> {
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
                     buttons[i][j].setText("");
                     buttons[i][j].setEnabled(true);
                     buttons[i][j].setBackground(new Color(240, 240, 240));
@@ -162,7 +144,7 @@ public class Client
 
     private void sendMessage(String message) throws IOException 
     {
-        //per inviare messaggio al server
+        //per inviare un messaggio al server
         byte[] buffer = message.getBytes(); //trasforma str in byte
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
         socket.send(packet);
@@ -170,7 +152,7 @@ public class Client
 
     private String receiveMessage() throws IOException 
     {
-        //per ricevere messaggio dal server
+        //per inviare un messaggio dal server
         byte[] buffer = new byte[1024];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
