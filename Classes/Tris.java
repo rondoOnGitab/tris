@@ -41,7 +41,7 @@ public class Tris {
             }
         }
 
-        // Controlla la diagonale principale (da dx a sx)
+        // Controlla la diagonale principale (da sx a dx)
         if (tris[0][0].isOccupato() && tris[1][1].isOccupato() && tris[2][2].isOccupato() &&
             tris[0][0].getOwnershipFlag() == player && tris[1][1].getOwnershipFlag() == player && tris[2][2].getOwnershipFlag() == player) {
             return true;

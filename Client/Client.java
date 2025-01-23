@@ -3,12 +3,14 @@ package Client;
 import java.io.*;
 import java.net.*;
 import javax.swing.*;
+
 import java.awt.*;
 
 public class Client 
 {
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
+
     private DatagramSocket socket;
     private InetAddress serverAddress;
     private boolean isMyTurn = false;
@@ -19,6 +21,7 @@ public class Client
 
     public static void main(String[] args) 
     {
+        //riguarda la sicurezza del frame
         SwingUtilities.invokeLater(() -> 
         {
             try 
@@ -34,17 +37,17 @@ public class Client
     public void start() throws IOException 
     {
         socket = new DatagramSocket();
-        serverAddress = InetAddress.getByName(SERVER_ADDRESS);
+        serverAddress = InetAddress.getByName(SERVER_ADDRESS); //ottengo indirzzo server
 
-        sendMessage("JOIN");
+        sendMessage("JOIN"); //messaggio inviato al server
 
-        mySymbol = receiveMessage();
+        mySymbol = receiveMessage(); //messagio ricevuto dal server
         opponentSymbol = mySymbol.equals("X") ? "O" : "X";
-        isMyTurn = mySymbol.equals("X");
+        isMyTurn = mySymbol.equals("X"); //se ha X prende turno iniziale
 
         createGUI();
 
-        new Thread(this::listenForMessages).start();
+        new Thread(this::listenForMessages).start(); //per ascoltare in modo non bloccate
     }
 
     private void createGUI() 
@@ -65,11 +68,12 @@ public class Client
                 button.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(Color.GRAY, 1),
                     BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+                
                 buttons[i][j] = button;
                 int row = i;
                 int col = j;
 
-                button.addActionListener(e -> handleButtonClick(row, col));
+                button.addActionListener(e -> handleButtonClick(row, col)); //assegno azione al bottone
                 frame.add(button);
             }
         }
@@ -83,7 +87,7 @@ public class Client
         {
             try 
             {
-                String message = "MOVE," + row + "," + col;
+                String message = "MOVE," + row + ";" + col;
                 sendMessage(message);
                 isMyTurn = false;
             } catch (Exception e) 
@@ -100,33 +104,36 @@ public class Client
             while (true) 
             {
                 String message = receiveMessage();
-                String[] parts = message.split(",");
+                String[] parts = message.split(";");
 
                 switch (parts[0]) 
                 {
                     case "MOVE":
-                        int row = Integer.parseInt(parts[1]);
+                        //aggiorno la visuale del client
+                        int row = Integer.parseInt(parts[1]); //ricevo una stringa quindi parso
                         int col = Integer.parseInt(parts[2]);
                         String symbol = parts[3];
                         buttons[row][col].setText(symbol);
                         buttons[row][col].setEnabled(false);
                         buttons[row][col].setBackground(symbol.equals("X") ? new Color(200, 220, 240) : new Color(240, 200, 220));
-                        isMyTurn = symbol.equals(opponentSymbol);
+                        isMyTurn = symbol.equals(opponentSymbol); // Cambia il turno
                         break;
-
-                    case "WIN":
-                        String winner = parts[1];
+                    case "WIN": 
+                        //messaggio di vittoria
+                        String winner = parts[1]; 
                         JOptionPane.showMessageDialog(frame, "Giocatore " + winner + " vittoria!", "Fine partita", JOptionPane.INFORMATION_MESSAGE);
                         resetBoard();
                         break;
-
-                    case "DRAW":
+                    case "DRAW": 
+                        //messaggio di pareggio
                         JOptionPane.showMessageDialog(frame, "Pareggio!", "Fine partita", JOptionPane.INFORMATION_MESSAGE);
                         resetBoard();
                         break;
-
-                    case "RESET":
+                    case "RESET": 
+                        //resetta
                         resetBoard();
+                        break;
+                    default:
                         break;
                 }
             }
@@ -155,13 +162,15 @@ public class Client
 
     private void sendMessage(String message) throws IOException 
     {
-        byte[] buffer = message.getBytes();
+        //per inviare messaggio al server
+        byte[] buffer = message.getBytes(); //trasforma str in byte
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
         socket.send(packet);
     }
 
     private String receiveMessage() throws IOException 
     {
+        //per ricevere messaggio dal server
         byte[] buffer = new byte[1024];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
