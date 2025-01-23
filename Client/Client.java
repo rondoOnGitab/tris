@@ -31,13 +31,13 @@ public class Client {
     public void start() throws IOException 
     {
         socket = new DatagramSocket();
-        serverAddress = InetAddress.getByName(SERVER_ADDRESS); //ottengo indirizzo server
+        serverAddress = InetAddress.getByName(SERVER_ADDRESS);
 
-        sendMessage("JOIN"); //messaggio inviato al server
+        sendMessage("JOIN");
 
-        mySymbol = receiveMessage(); //messaggio ricevuto dal server
+        mySymbol = receiveMessage();
         opponentSymbol = mySymbol.equals("X") ? "O" : "X";
-        isMyTurn = mySymbol.equals("X"); //se ha X prende il turno
+        isMyTurn = mySymbol.equals("X");
 
         createGUI();
 
@@ -64,7 +64,7 @@ public class Client {
                 int row = i;
                 int col = j;
 
-                button.addActionListener(e -> handleButtonClick(row, col)); //assegno un azione ad un bottone
+                button.addActionListener(e -> handleButtonClick(row, col));
                 frame.add(button);
             }
         }
@@ -97,7 +97,7 @@ public class Client {
                 switch (parts[0]) 
                 {
                     case "MOVE":
-                        int row = Integer.parseInt(parts[1]);//ricevo una stringa quindi parso
+                        int row = Integer.parseInt(parts[1]);
                         int col = Integer.parseInt(parts[2]);
                         String symbol = parts[3];
                         buttons[row][col].setText(symbol);
@@ -145,7 +145,7 @@ public class Client {
     private void sendMessage(String message) throws IOException 
     {
         //per inviare un messaggio al server
-        byte[] buffer = message.getBytes(); //trasforma str in byte
+        byte[] buffer = message.getBytes();
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
         socket.send(packet);
     }
